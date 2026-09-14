@@ -35,6 +35,7 @@ public:
 private:
     bool initialized_{false};
     VulkanCapabilities capabilities_{};
+    void* instance_{nullptr};
 };
 
 } // namespace urbanduty::renderer
