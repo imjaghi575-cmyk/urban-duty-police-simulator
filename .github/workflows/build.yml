@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Vulkan development files
-        run: sudo apt-get update && sudo apt-get install -y libvulkan-dev
+      - name: Install Linux/Vulkan development files
+        run: sudo apt-get update && sudo apt-get install -y libvulkan-dev libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libwayland-dev libwayland-egl1 libxkbcommon-dev
       - name: Configure
         run: cmake -S . -B build -DURBANDUTY_BUILD_TESTS=ON -DURBANDUTY_FETCH_SDL=ON
       - name: Build
