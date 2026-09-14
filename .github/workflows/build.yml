@@ -15,7 +15,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Linux/Vulkan development files
-        run: sudo apt-get update && sudo apt-get install -y libvulkan-dev libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libwayland-dev libwayland-egl1 libxkbcommon-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvulkan-dev libx11-dev libxext-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libwayland-dev libwayland-egl1 libxkbcommon-dev libdecor-0-dev
       - name: Configure
         run: cmake -S . -B build -DURBANDUTY_BUILD_TESTS=ON -DURBANDUTY_FETCH_SDL=ON
       - name: Build
@@ -33,6 +35,17 @@ jobs:
         run: cmake --build build --config Release --parallel
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: Package Windows build
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path artifacts | Out-Null
+          Copy-Item build/Release/UrbanDuty.exe artifacts/UrbanDuty-Windows.exe
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-duty-windows
+          path: artifacts/UrbanDuty-Windows.exe
+          if-no-files-found: error
 
   android:
     runs-on: ubuntu-latest
@@ -47,6 +60,11 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Install Android toolchain
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
+      - name: Prepare SDL Android Java glue
+        run: |
+          git clone --depth 1 --branch release-3.4.12 https://github.com/libsdl-org/SDL.git .ci-sdl
+          mkdir -p android/app/src/main/java/org/libsdl/app
+          cp .ci-sdl/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
       - name: Configure native Android build
         run: |
           cmake -S . -B build-android \
@@ -57,18 +75,17 @@ jobs:
             -DURBANDUTY_FETCH_SDL=ON
       - name: Build native library
         run: cmake --build build-android --parallel
-      - name: Prepare SDL Android Java glue
-        run: |
-          git clone --depth 1 --branch release-3.4.12 https://github.com/libsdl-org/SDL.git .ci-sdl
-          mkdir -p android/app/src/main/java/org/libsdl/app
-          cp .ci-sdl/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
       - name: Build debug APK
         working-directory: android
-        run: gradle --no-daemon assembleDebug
+        run: gradle --no-daemon --stacktrace assembleDebug
+      - name: Verify APK contents
+        run: |
+          test -s android/app/build/outputs/apk/debug/app-debug.apk
+          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -E 'lib/arm64-v8a/libmain.so|AndroidManifest.xml'
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
