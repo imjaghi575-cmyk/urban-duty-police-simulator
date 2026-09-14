@@ -37,13 +37,27 @@ else()
   target_compile_options(UrbanDutyCore PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+if(Vulkan_FOUND)
+  add_library(UrbanDutyVulkan STATIC
+    Engine/Renderer/Vulkan/VulkanCapabilities.cpp
+  )
+  target_include_directories(UrbanDutyVulkan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  target_link_libraries(UrbanDutyVulkan PUBLIC Vulkan::Vulkan)
+  target_compile_features(UrbanDutyVulkan PUBLIC cxx_std_20)
+  if(MSVC)
+    target_compile_options(UrbanDutyVulkan PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(UrbanDutyVulkan PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+endif()
+
 add_executable(UrbanDuty
   Platform/SDL3/Main.cpp
 )
 target_link_libraries(UrbanDuty PRIVATE UrbanDutyCore SDL3::SDL3)
 
 if(Vulkan_FOUND)
-  target_link_libraries(UrbanDuty PRIVATE Vulkan::Vulkan)
+  target_link_libraries(UrbanDuty PRIVATE UrbanDutyVulkan Vulkan::Vulkan)
   target_compile_definitions(UrbanDuty PRIVATE URBANDUTY_HAS_VULKAN=1)
 endif()
 
@@ -58,4 +72,10 @@ if(URBANDUTY_BUILD_TESTS)
   add_executable(UrbanDutyCoreTests Tests/CoreTests.cpp)
   target_link_libraries(UrbanDutyCoreTests PRIVATE UrbanDutyCore)
   add_test(NAME UrbanDutyCoreTests COMMAND UrbanDutyCoreTests)
+
+  if(Vulkan_FOUND)
+    add_executable(UrbanDutyVulkanTests Tests/VulkanCapabilitiesTests.cpp)
+    target_link_libraries(UrbanDutyVulkanTests PRIVATE UrbanDutyVulkan)
+    add_test(NAME UrbanDutyVulkanTests COMMAND UrbanDutyVulkanTests)
+  endif()
 endif()
