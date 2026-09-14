@@ -59,7 +59,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       - name: Install Android toolchain
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
       - name: Configure native Android build
         run: |
           set -euxo pipefail
@@ -76,7 +78,9 @@ jobs:
           cmake --build build-android --target help | tee android-native-targets.txt
           grep -E 'UrbanDuty$|UrbanDutyCore$|UrbanDutyVulkan$' android-native-targets.txt || true
       - name: Build native library
-        run: cmake --build build-android --target UrbanDuty --parallel --verbose 2>&1 | tee android-native-build.log
+        run: |
+          set -euo pipefail
+          cmake --build build-android --target UrbanDuty --parallel --verbose 2>&1 | tee android-native-build.log
       - name: Verify native library
         shell: bash
         run: |
@@ -112,7 +116,9 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
       - name: Install Android build tools
-        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
+        run: |
+          set -euo pipefail
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
       - name: Prepare SDL Android Java glue
         run: |
           set -euxo pipefail
@@ -125,7 +131,9 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         working-directory: android
-        run: gradle --no-daemon --stacktrace --info assembleDebug 2>&1 | tee ../android-apk-build.log
+        run: |
+          set -euo pipefail
+          gradle --no-daemon --stacktrace --info assembleDebug 2>&1 | tee ../android-apk-build.log
       - name: Verify APK contents and native ABI
         shell: bash
         run: |
