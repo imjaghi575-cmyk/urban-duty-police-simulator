@@ -1,13 +1,13 @@
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include <cstdint>
 
 namespace urbanduty::renderer::vulkan {
 
-VkApiVersion select_supported_api_version(
-    VkApiVersion requested,
-    VkApiVersion loader_version,
-    VkApiVersion physical_device_version,
+std::uint32_t select_supported_api_version(
+    std::uint32_t requested,
+    std::uint32_t loader_version,
+    std::uint32_t physical_device_version,
     int android_api_level) noexcept;
 
 } // namespace urbanduty::renderer::vulkan
