@@ -1,13 +1,15 @@
 #include "Engine/Renderer/Vulkan/VulkanCapabilities.hpp"
 
+#include <vulkan/vulkan.h>
+
 namespace urbanduty::renderer::vulkan {
 
-VkApiVersion select_supported_api_version(
-    VkApiVersion requested,
-    VkApiVersion loader_version,
-    VkApiVersion physical_device_version,
+std::uint32_t select_supported_api_version(
+    std::uint32_t requested,
+    std::uint32_t loader_version,
+    std::uint32_t physical_device_version,
     int android_api_level) noexcept {
-    VkApiVersion candidate = requested == 0 ? loader_version : (requested < loader_version ? requested : loader_version);
+    std::uint32_t candidate = requested == 0 ? loader_version : (requested < loader_version ? requested : loader_version);
 
     if (physical_device_version != 0 && candidate > physical_device_version) {
         candidate = physical_device_version;
