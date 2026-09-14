@@ -55,9 +55,11 @@ set(URBANDUTY_HAS_VULKAN OFF)
 if(ANDROID OR Vulkan_FOUND)
   add_library(UrbanDutyVulkan STATIC
     Engine/Renderer/Vulkan/VulkanCapabilities.cpp
+    Engine/Renderer/Vulkan/VulkanContext.cpp
   )
   target_include_directories(UrbanDutyVulkan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
   target_compile_features(UrbanDutyVulkan PUBLIC cxx_std_20)
+  target_compile_definitions(UrbanDutyVulkan PRIVATE URBANDUTY_HAS_VULKAN=1)
   if(ANDROID)
     target_link_libraries(UrbanDutyVulkan PUBLIC ${URBANDUTY_VULKAN_LIBRARY})
   else()
