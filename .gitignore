@@ -1,0 +1,10 @@
+build/
+out/
+.vscode/
+.idea/
+.gradle/
+.cxx/
+*.user
+*.suo
+*.vcxproj.user
+.DS_Store
