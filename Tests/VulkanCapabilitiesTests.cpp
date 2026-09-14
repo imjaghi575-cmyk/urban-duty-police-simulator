@@ -1,5 +1,7 @@
 #include "Engine/Renderer/Vulkan/VulkanCapabilities.hpp"
 
+#include <vulkan/vulkan.h>
+
 #include <cassert>
 
 int main() {
