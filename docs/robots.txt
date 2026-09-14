@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://imjaghi575-cmyk.github.io/urban-duty-police-simulator/sitemap.xml
