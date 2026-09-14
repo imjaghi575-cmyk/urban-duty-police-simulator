@@ -2,6 +2,7 @@
 
 #if defined(URBANDUTY_HAS_VULKAN)
 #include <vulkan/vulkan.h>
+#include <vector>
 #endif
 
 namespace urbanduty::renderer {
@@ -15,8 +16,7 @@ bool VulkanContext::initialize(const VulkanContextConfig& config, std::string& e
 
 #if defined(URBANDUTY_HAS_VULKAN)
     std::uint32_t api_version = VK_API_VERSION_1_0;
-    const VkResult version_result = vkEnumerateInstanceVersion(&api_version);
-    if (version_result != VK_SUCCESS) {
+    if (vkEnumerateInstanceVersion(&api_version) != VK_SUCCESS) {
         error = "Unable to query Vulkan instance version";
         return false;
     }
@@ -57,31 +57,33 @@ bool VulkanContext::initialize(const VulkanContextConfig& config, std::string& e
         return false;
     }
 
-    VkPhysicalDevice device = VK_NULL_HANDLE;
-    std::uint32_t graphics_queue_family = 0;
-    for (std::uint32_t i = 0; i < device_count && device == VK_NULL_HANDLE; ++i) {
-        VkPhysicalDevice candidate = VK_NULL_HANDLE;
-        if (vkEnumeratePhysicalDevices(instance, &device_count, &candidate) != VK_SUCCESS) {
-            break;
-        }
-        // The compact foundation only needs a deterministic graphics-capable device.
+    std::vector<VkPhysicalDevice> devices(device_count);
+    if (vkEnumeratePhysicalDevices(instance, &device_count, devices.data()) != VK_SUCCESS) {
+        error = "Unable to enumerate Vulkan physical devices";
+        shutdown();
+        return false;
+    }
+
+    bool graphics_queue_found = false;
+    for (VkPhysicalDevice candidate : devices) {
         std::uint32_t family_count = 0;
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &family_count, nullptr);
         std::vector<VkQueueFamilyProperties> families(family_count);
         vkGetPhysicalDeviceQueueFamilyProperties(candidate, &family_count, families.data());
-        for (std::uint32_t family = 0; family < family_count; ++family) {
-            if ((families[family].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
-                device = candidate;
-                graphics_queue_family = family;
+        for (const VkQueueFamilyProperties& family : families) {
+            if ((family.queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0) {
+                graphics_queue_found = true;
                 break;
             }
         }
+        if (graphics_queue_found) {
+            break;
+        }
     }
 
-    (void)graphics_queue_family;
-    capabilities_.graphics_queue_available = device != VK_NULL_HANDLE;
+    capabilities_.graphics_queue_available = graphics_queue_found;
     capabilities_.present_queue_available = false; // Requires an SDL-created presentation surface.
-    if (!capabilities_.graphics_queue_available) {
+    if (!graphics_queue_found) {
         error = "No graphics-capable Vulkan queue family is available";
         shutdown();
         return false;
