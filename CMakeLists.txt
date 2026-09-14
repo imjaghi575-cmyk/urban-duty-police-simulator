@@ -8,8 +8,6 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(URBANDUTY_BUILD_TESTS "Build engine tests" ON)
 option(URBANDUTY_FETCH_SDL "Fetch SDL3 when not supplied by the platform" ON)
 
-# Android packages our shared `main` library. SDL's Android documentation requires
-# position-independent code when a static SDL build is linked into that shared lib.
 if(ANDROID)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
   set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -35,8 +33,6 @@ if(URBANDUTY_FETCH_SDL)
 endif()
 
 if(ANDROID)
-  # Do not let a host Vulkan package accidentally leak into the Android build.
-  # The NDK provides the device Vulkan loader as libvulkan.so.
   find_library(URBANDUTY_VULKAN_LIBRARY vulkan REQUIRED)
 else()
   find_package(Vulkan QUIET)
@@ -76,17 +72,23 @@ if(ANDROID OR Vulkan_FOUND)
 endif()
 
 if(ANDROID)
-  add_library(UrbanDuty SHARED
-    Platform/SDL3/Main.cpp
-  )
+  add_library(UrbanDuty SHARED Platform/SDL3/Main.cpp)
   set_target_properties(UrbanDuty PROPERTIES OUTPUT_NAME main)
+  if(TARGET SDL3::SDL3-static)
+    set(URBANDUTY_SDL_TARGET SDL3::SDL3-static)
+  else()
+    message(FATAL_ERROR "SDL3 static target is required for the Android native package")
+  endif()
 else()
-  add_executable(UrbanDuty
-    Platform/SDL3/Main.cpp
-  )
+  add_executable(UrbanDuty Platform/SDL3/Main.cpp)
+  if(TARGET SDL3::SDL3)
+    set(URBANDUTY_SDL_TARGET SDL3::SDL3)
+  else()
+    message(FATAL_ERROR "SDL3 target was not created")
+  endif()
 endif()
 
-target_link_libraries(UrbanDuty PRIVATE UrbanDutyCore SDL3::SDL3)
+target_link_libraries(UrbanDuty PRIVATE UrbanDutyCore ${URBANDUTY_SDL_TARGET})
 
 if(URBANDUTY_HAS_VULKAN)
   target_link_libraries(UrbanDuty PRIVATE UrbanDutyVulkan)
