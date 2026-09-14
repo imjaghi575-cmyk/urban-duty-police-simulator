@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+env:
+  ANDROID_NDK_VERSION: 28.2.13676358
+  ANDROID_CMAKE_VERSION: 3.31.6
+
 jobs:
   linux:
     runs-on: ubuntu-latest
@@ -61,12 +65,15 @@ jobs:
       - name: Install Android toolchain
         run: |
           set -euo pipefail
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${ANDROID_CMAKE_VERSION}"
       - name: Configure native Android build
         run: |
           set -euxo pipefail
+          export ANDROID_NDK_HOME="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          test -x "${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/bin/clang++"
           cmake -S . -B build-android \
-            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
+            -DCMAKE_TOOLCHAIN_FILE="${ANDROID_NDK_HOME}/build/cmake/android.toolchain.cmake" \
+            -DANDROID_NDK="${ANDROID_NDK_HOME}" \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-29 \
             -DURBANDUTY_BUILD_TESTS=OFF \
@@ -118,7 +125,7 @@ jobs:
       - name: Install Android build tools
         run: |
           set -euo pipefail
-          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;${ANDROID_NDK_VERSION}" "cmake;${ANDROID_CMAKE_VERSION}"
       - name: Prepare SDL Android Java glue
         run: |
           set -euxo pipefail
