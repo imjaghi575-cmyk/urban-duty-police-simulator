@@ -41,7 +41,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path artifacts | Out-Null
           Copy-Item build/Release/UrbanDuty.exe artifacts/UrbanDuty-Windows.exe
       - name: Upload Windows build
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: urban-duty-windows
           path: artifacts/UrbanDuty-Windows.exe
@@ -89,7 +89,7 @@ jobs:
           grep -q 'AArch64' android-native-elf.txt
       - name: Upload Android native diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: urban-duty-android-native-diagnostics
           path: |
@@ -142,7 +142,7 @@ jobs:
           echo "APK verified: $apk"
       - name: Upload APK diagnostics
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: urban-duty-android-apk-diagnostics
           path: |
@@ -151,7 +151,7 @@ jobs:
             android-apk-elf.txt
           if-no-files-found: warn
       - name: Upload APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: urban-duty-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
