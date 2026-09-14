@@ -51,9 +51,17 @@ if(Vulkan_FOUND)
   endif()
 endif()
 
-add_executable(UrbanDuty
-  Platform/SDL3/Main.cpp
-)
+if(ANDROID)
+  add_library(UrbanDuty SHARED
+    Platform/SDL3/Main.cpp
+  )
+  set_target_properties(UrbanDuty PROPERTIES OUTPUT_NAME main)
+else()
+  add_executable(UrbanDuty
+    Platform/SDL3/Main.cpp
+  )
+endif()
+
 target_link_libraries(UrbanDuty PRIVATE UrbanDutyCore SDL3::SDL3)
 
 if(Vulkan_FOUND)
@@ -67,7 +75,7 @@ elseif(ANDROID)
   target_compile_definitions(UrbanDuty PRIVATE URBANDUTY_PLATFORM_ANDROID=1)
 endif()
 
-if(URBANDUTY_BUILD_TESTS)
+if(URBANDUTY_BUILD_TESTS AND NOT ANDROID)
   enable_testing()
   add_executable(UrbanDutyCoreTests Tests/CoreTests.cpp)
   target_link_libraries(UrbanDutyCoreTests PRIVATE UrbanDutyCore)
