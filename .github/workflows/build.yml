@@ -62,14 +62,21 @@ jobs:
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
       - name: Configure native Android build
         run: |
+          set -euxo pipefail
           cmake -S . -B build-android \
             -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
             -DANDROID_ABI=arm64-v8a \
             -DANDROID_PLATFORM=android-29 \
             -DURBANDUTY_BUILD_TESTS=OFF \
-            -DURBANDUTY_FETCH_SDL=ON
+            -DURBANDUTY_FETCH_SDL=ON \
+            -DURBANDUTY_ENABLE_VULKAN=ON
+      - name: Inspect native targets
+        run: |
+          set -euxo pipefail
+          cmake --build build-android --target help | tee android-native-targets.txt
+          grep -E 'UrbanDuty$|UrbanDutyCore$|UrbanDutyVulkan$' android-native-targets.txt || true
       - name: Build native library
-        run: cmake --build build-android --parallel
+        run: cmake --build build-android --target UrbanDuty --parallel --verbose 2>&1 | tee android-native-build.log
       - name: Verify native library
         shell: bash
         run: |
@@ -77,6 +84,20 @@ jobs:
           native_lib="$(find build-android -type f -name 'libmain.so' -size +0c -print -quit)"
           test -n "$native_lib"
           echo "Native library: $native_lib"
+          file "$native_lib"
+          readelf -h "$native_lib" | tee android-native-elf.txt
+          grep -q 'AArch64' android-native-elf.txt
+      - name: Upload Android native diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-duty-android-native-diagnostics
+          path: |
+            android-native-build.log
+            android-native-targets.txt
+            android-native-elf.txt
+            build-android/CMakeCache.txt
+          if-no-files-found: warn
 
   android-apk:
     runs-on: ubuntu-latest
@@ -94,6 +115,7 @@ jobs:
         run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358" "cmake;3.31.6"
       - name: Prepare SDL Android Java glue
         run: |
+          set -euxo pipefail
           git clone --depth 1 --branch release-3.4.12 https://github.com/libsdl-org/SDL.git .ci-sdl
           mkdir -p android/app/src/main/java/org/libsdl/app
           cp .ci-sdl/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
@@ -103,15 +125,31 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         working-directory: android
-        run: gradle --no-daemon --stacktrace assembleDebug
-      - name: Verify APK contents
+        run: gradle --no-daemon --stacktrace --info assembleDebug 2>&1 | tee ../android-apk-build.log
+      - name: Verify APK contents and native ABI
         shell: bash
         run: |
           set -euo pipefail
           apk="android/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$apk"
-          unzip -l "$apk" | grep -E 'lib/arm64-v8a/libmain.so|AndroidManifest.xml'
-          echo "APK: $apk"
+          unzip -l "$apk" | tee android-apk-contents.txt
+          grep -q 'lib/arm64-v8a/libmain.so' android-apk-contents.txt
+          grep -q 'AndroidManifest.xml' android-apk-contents.txt
+          unzip -p "$apk" lib/arm64-v8a/libmain.so > apk-libmain.so
+          file apk-libmain.so
+          readelf -h apk-libmain.so | tee android-apk-elf.txt
+          grep -q 'AArch64' android-apk-elf.txt
+          echo "APK verified: $apk"
+      - name: Upload APK diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: urban-duty-android-apk-diagnostics
+          path: |
+            android-apk-build.log
+            android-apk-contents.txt
+            android-apk-elf.txt
+          if-no-files-found: warn
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
