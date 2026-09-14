@@ -2,6 +2,7 @@
 #include "Engine/Core/Runtime.hpp"
 
 #include <SDL3/SDL.h>
+#include <cstdint>
 
 int main(int, char**) {
     using namespace urbanduty::core;
