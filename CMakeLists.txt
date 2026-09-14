@@ -7,6 +7,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(URBANDUTY_BUILD_TESTS "Build engine tests" ON)
 option(URBANDUTY_FETCH_SDL "Fetch SDL3 when not supplied by the platform" ON)
+option(URBANDUTY_ENABLE_VULKAN "Build the native Vulkan renderer layer" ON)
 
 if(ANDROID)
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -34,7 +35,7 @@ endif()
 
 if(ANDROID)
   find_library(URBANDUTY_VULKAN_LIBRARY vulkan REQUIRED)
-else()
+elseif(URBANDUTY_ENABLE_VULKAN)
   find_package(Vulkan QUIET)
 endif()
 
@@ -52,7 +53,7 @@ else()
 endif()
 
 set(URBANDUTY_HAS_VULKAN OFF)
-if(ANDROID OR Vulkan_FOUND)
+if(URBANDUTY_ENABLE_VULKAN AND (ANDROID OR Vulkan_FOUND))
   add_library(UrbanDutyVulkan STATIC
     Engine/Renderer/Vulkan/VulkanCapabilities.cpp
     Engine/Renderer/Vulkan/VulkanContext.cpp
@@ -76,18 +77,17 @@ endif()
 if(ANDROID)
   add_library(UrbanDuty SHARED Platform/SDL3/Main.cpp)
   set_target_properties(UrbanDuty PROPERTIES OUTPUT_NAME main)
-  if(TARGET SDL3::SDL3-static)
-    set(URBANDUTY_SDL_TARGET SDL3::SDL3-static)
-  else()
-    message(FATAL_ERROR "SDL3 static target is required for the Android native package")
-  endif()
 else()
   add_executable(UrbanDuty Platform/SDL3/Main.cpp)
-  if(TARGET SDL3::SDL3)
-    set(URBANDUTY_SDL_TARGET SDL3::SDL3)
-  else()
-    message(FATAL_ERROR "SDL3 target was not created")
-  endif()
+endif()
+
+# SDL guarantees the SDL3::SDL3 target. Its implementation can be static or
+# shared depending on the options above; do not depend on implementation-
+# specific aliases such as SDL3::SDL3-static.
+if(TARGET SDL3::SDL3)
+  set(URBANDUTY_SDL_TARGET SDL3::SDL3)
+else()
+  message(FATAL_ERROR "SDL3::SDL3 target was not created")
 endif()
 
 target_link_libraries(UrbanDuty PRIVATE UrbanDutyCore ${URBANDUTY_SDL_TARGET})
@@ -114,7 +114,7 @@ if(URBANDUTY_BUILD_TESTS AND NOT ANDROID)
   target_link_libraries(UrbanDutyCoreTests PRIVATE UrbanDutyCore)
   add_test(NAME UrbanDutyCoreTests COMMAND UrbanDutyCoreTests)
 
-  if(Vulkan_FOUND)
+  if(URBANDUTY_HAS_VULKAN)
     add_executable(UrbanDutyVulkanTests Tests/VulkanCapabilitiesTests.cpp)
     target_link_libraries(UrbanDutyVulkanTests PRIVATE UrbanDutyVulkan)
     add_test(NAME UrbanDutyVulkanTests COMMAND UrbanDutyVulkanTests)
