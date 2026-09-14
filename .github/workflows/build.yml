@@ -71,7 +71,12 @@ jobs:
       - name: Build native library
         run: cmake --build build-android --parallel
       - name: Verify native library
-        run: test -s build-android/libmain.so
+        shell: bash
+        run: |
+          set -euo pipefail
+          native_lib="$(find build-android -type f -name 'libmain.so' -size +0c -print -quit)"
+          test -n "$native_lib"
+          echo "Native library: $native_lib"
 
   android-apk:
     runs-on: ubuntu-latest
@@ -100,9 +105,13 @@ jobs:
         working-directory: android
         run: gradle --no-daemon --stacktrace assembleDebug
       - name: Verify APK contents
+        shell: bash
         run: |
-          test -s android/app/build/outputs/apk/debug/app-debug.apk
-          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -E 'lib/arm64-v8a/libmain.so|AndroidManifest.xml'
+          set -euo pipefail
+          apk="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$apk"
+          unzip -l "$apk" | grep -E 'lib/arm64-v8a/libmain.so|AndroidManifest.xml'
+          echo "APK: $apk"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
