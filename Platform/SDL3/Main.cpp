@@ -2,6 +2,7 @@
 #include "Engine/Core/Runtime.hpp"
 
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_main.h>
 #include <cstdint>
 
 int main(int, char**) {

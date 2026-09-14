@@ -8,12 +8,24 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(URBANDUTY_BUILD_TESTS "Build engine tests" ON)
 option(URBANDUTY_FETCH_SDL "Fetch SDL3 when not supplied by the platform" ON)
 
+# Android packages our shared `main` library. SDL's Android documentation requires
+# position-independent code when a static SDL build is linked into that shared lib.
+if(ANDROID)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+  set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+  set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+  set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+endif()
+
 if(URBANDUTY_FETCH_SDL)
   include(FetchContent)
   FetchContent_Declare(
     SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG release-3.2.22
+    GIT_TAG release-3.4.12
     GIT_SHALLOW TRUE
   )
   set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -22,7 +34,13 @@ if(URBANDUTY_FETCH_SDL)
   FetchContent_MakeAvailable(SDL3)
 endif()
 
-find_package(Vulkan QUIET)
+if(ANDROID)
+  # Do not let a host Vulkan package accidentally leak into the Android build.
+  # The NDK provides the device Vulkan loader as libvulkan.so.
+  find_library(URBANDUTY_VULKAN_LIBRARY vulkan REQUIRED)
+else()
+  find_package(Vulkan QUIET)
+endif()
 
 add_library(UrbanDutyCore STATIC
   Engine/Core/Log.cpp
@@ -37,13 +55,46 @@ else()
   target_compile_options(UrbanDutyCore PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-add_executable(UrbanDuty
-  Platform/SDL3/Main.cpp
-)
+set(URBANDUTY_HAS_VULKAN OFF)
+if(ANDROID OR Vulkan_FOUND)
+  add_library(UrbanDutyVulkan STATIC
+    Engine/Renderer/Vulkan/VulkanCapabilities.cpp
+  )
+  target_include_directories(UrbanDutyVulkan PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+  target_compile_features(UrbanDutyVulkan PUBLIC cxx_std_20)
+  if(ANDROID)
+    target_link_libraries(UrbanDutyVulkan PUBLIC ${URBANDUTY_VULKAN_LIBRARY})
+  else()
+    target_link_libraries(UrbanDutyVulkan PUBLIC Vulkan::Vulkan)
+  endif()
+  if(MSVC)
+    target_compile_options(UrbanDutyVulkan PRIVATE /W4 /permissive-)
+  else()
+    target_compile_options(UrbanDutyVulkan PRIVATE -Wall -Wextra -Wpedantic)
+  endif()
+  set(URBANDUTY_HAS_VULKAN ON)
+endif()
+
+if(ANDROID)
+  add_library(UrbanDuty SHARED
+    Platform/SDL3/Main.cpp
+  )
+  set_target_properties(UrbanDuty PROPERTIES OUTPUT_NAME main)
+else()
+  add_executable(UrbanDuty
+    Platform/SDL3/Main.cpp
+  )
+endif()
+
 target_link_libraries(UrbanDuty PRIVATE UrbanDutyCore SDL3::SDL3)
 
-if(Vulkan_FOUND)
-  target_link_libraries(UrbanDuty PRIVATE Vulkan::Vulkan)
+if(URBANDUTY_HAS_VULKAN)
+  target_link_libraries(UrbanDuty PRIVATE UrbanDutyVulkan)
+  if(ANDROID)
+    target_link_libraries(UrbanDuty PRIVATE ${URBANDUTY_VULKAN_LIBRARY})
+  else()
+    target_link_libraries(UrbanDuty PRIVATE Vulkan::Vulkan)
+  endif()
   target_compile_definitions(UrbanDuty PRIVATE URBANDUTY_HAS_VULKAN=1)
 endif()
 
@@ -53,9 +104,15 @@ elseif(ANDROID)
   target_compile_definitions(UrbanDuty PRIVATE URBANDUTY_PLATFORM_ANDROID=1)
 endif()
 
-if(URBANDUTY_BUILD_TESTS)
+if(URBANDUTY_BUILD_TESTS AND NOT ANDROID)
   enable_testing()
   add_executable(UrbanDutyCoreTests Tests/CoreTests.cpp)
   target_link_libraries(UrbanDutyCoreTests PRIVATE UrbanDutyCore)
   add_test(NAME UrbanDutyCoreTests COMMAND UrbanDutyCoreTests)
+
+  if(Vulkan_FOUND)
+    add_executable(UrbanDutyVulkanTests Tests/VulkanCapabilitiesTests.cpp)
+    target_link_libraries(UrbanDutyVulkanTests PRIVATE UrbanDutyVulkan)
+    add_test(NAME UrbanDutyVulkanTests COMMAND UrbanDutyVulkanTests)
+  endif()
 endif()
