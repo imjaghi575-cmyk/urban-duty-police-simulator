@@ -4,14 +4,20 @@ on:
   push:
     branches: [ main ]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Install Vulkan development files
+        run: sudo apt-get update && sudo apt-get install -y libvulkan-dev
       - name: Configure
-        run: cmake -S . -B build -DURBANDUTY_BUILD_TESTS=ON
+        run: cmake -S . -B build -DURBANDUTY_BUILD_TESTS=ON -DURBANDUTY_FETCH_SDL=ON
       - name: Build
         run: cmake --build build --parallel
       - name: Test
@@ -22,8 +28,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake -S . -B build -DURBANDUTY_BUILD_TESTS=ON
+        run: cmake -S . -B build -DURBANDUTY_BUILD_TESTS=ON -DURBANDUTY_FETCH_SDL=ON
       - name: Build
         run: cmake --build build --config Release --parallel
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android toolchain
+        run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0" "ndk;28.2.13676358"
+      - name: Configure native Android build
+        run: |
+          cmake -S . -B build-android \
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK_ROOT/build/cmake/android.toolchain.cmake" \
+            -DANDROID_ABI=arm64-v8a \
+            -DANDROID_PLATFORM=android-29 \
+            -DURBANDUTY_BUILD_TESTS=OFF \
+            -DURBANDUTY_FETCH_SDL=ON
+      - name: Build native library
+        run: cmake --build build-android --parallel
