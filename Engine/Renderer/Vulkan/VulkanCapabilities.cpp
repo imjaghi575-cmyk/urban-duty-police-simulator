@@ -5,8 +5,13 @@ namespace urbanduty::renderer::vulkan {
 VkApiVersion select_supported_api_version(
     VkApiVersion requested,
     VkApiVersion loader_version,
+    VkApiVersion physical_device_version,
     int android_api_level) noexcept {
     VkApiVersion candidate = requested == 0 ? loader_version : (requested < loader_version ? requested : loader_version);
+
+    if (physical_device_version != 0 && candidate > physical_device_version) {
+        candidate = physical_device_version;
+    }
 
     if (android_api_level >= 24 && android_api_level < 29 && candidate > VK_API_VERSION_1_0) {
         candidate = VK_API_VERSION_1_0;
