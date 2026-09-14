@@ -46,7 +46,7 @@ add_library(UrbanDutyCore STATIC
 target_include_directories(UrbanDutyCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 target_compile_features(UrbanDutyCore PUBLIC cxx_std_20)
 
-aif(MSVC)
+if(MSVC)
   target_compile_options(UrbanDutyCore PRIVATE /W4 /permissive-)
 else()
   target_compile_options(UrbanDutyCore PRIVATE -Wall -Wextra -Wpedantic)
@@ -82,8 +82,8 @@ else()
 endif()
 
 # SDL guarantees the SDL3::SDL3 target. Its implementation can be static or
-# shared depending on the options above; do not depend on an implementation-
-# specific alias such as SDL3::SDL3-static.
+# shared depending on the options above; do not depend on implementation-
+# specific aliases such as SDL3::SDL3-static.
 if(TARGET SDL3::SDL3)
   set(URBANDUTY_SDL_TARGET SDL3::SDL3)
 else()
